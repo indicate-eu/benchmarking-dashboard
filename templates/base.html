@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>ICU Quality Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="brand">ICU Quality Dashboard</div>
+      <form class="period" method="get">
+        <label>Start
+          <input type="date" name="start" value="{{ start|default('') }}">
+        </label>
+        <label>End
+          <input type="date" name="end" value="{{ end|default('') }}">
+        </label>
+        <button type="submit">Apply</button>
+      </form>
+      <nav class="navlinks">
+        <a href="/">Overview</a>
+      </nav>
+    </div>
+
+    <main class="container">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

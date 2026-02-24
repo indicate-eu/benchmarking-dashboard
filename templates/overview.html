@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Overview</h1>
+
+  <div class="grid">
+    <div class="table overview-table header">
+      <div>Indicator</div>
+      <div>Number of Hospitals</div>
+      <div>Number of Patients</div>
+      <div>Avg. Adherence (own/all)</div>
+      <div>Rank</div>
+      <div>History</div>
+    </div>
+
+    {% for ind in indicators %}
+    <a class="table overview-table row" href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
+      <div class="name">{{ ind.name }}</div>
+      <div>{{ ind.num_hospitals }}</div>
+      <div>{{ ind.num_patients }}</div>
+      <div>{{ ind.avg_own }} % / {{ ind.avg_all }} %</div>
+      <div>{{ ind.rank }}</div>
+      <div class="history">
+        {% for cell in ind.history %}
+          <div class="histcell" title="{{ cell.date }}: {{ cell.value }} %" style="background-color: rgb({{ (255*(1 - (cell.value/100)))|int }}, {{ (255*(cell.value/100))|int }}, 80);"></div>
+        {% endfor %}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+{% endblock %}

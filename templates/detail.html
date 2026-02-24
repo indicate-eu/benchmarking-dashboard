@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <a class="back" href="/?start={{ start }}&end={{ end }}">← Back to overview</a>
+  <h1>{{ detail.name }}</h1>
+  <p class="muted">{{ detail.description }}</p>
+
+  <div class="grid">
+    <div class="table detail-table header">
+      <div>Rank</div>
+      <div>Data provider</div>
+      <div>Avg. Number of Patients</div>
+      <div>Avg. Adherence</div>
+      <div>History</div>
+    </div>
+
+    {% for p in detail.providers %}
+    <div class="table detail-table row {% if p.is_self  %}self{% endif %}">
+      <div class="rank">{{ p.rank }}</div>
+      <div class="provider">{{ p.label }}</div>
+      <div>{{ p.num_patients | round() }}</div>
+      <div>{{ p.avg | round(2) }} %</div>
+      <div class="history">
+        {% for cell in p.history %}
+          <div class="histcell" title="{{ cell.date }}: {{ 100*cell.value | round(2) }} %, based on {{ cell.observation_count }} Patients" style="background-color: rgb({{ (255*(1 - cell.value))|int }}, {{ (255*cell.value)|int }}, 80);"></div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+{% endblock %}
