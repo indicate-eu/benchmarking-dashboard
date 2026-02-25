@@ -1,6 +1,11 @@
 {% from "history-cell.html" import history_cell %}
 {% extends "base.html" %}
 
+{% block script %}
+import {DataTable} from "/static/SimpleDataTables.js"
+window.dt = new DataTable("#detail")
+{% endblock %}
+
 {% block content %}
   <a class="back" href="/?start={{ start }}&end={{ end }}">← Back to overview</a>
   <h1>{{ detail.name }}</h1>
@@ -13,7 +18,7 @@
         <th>Data provider</th>
         <th>Avg. Number of Patients</th>
         <th>Avg. Adherence</th>
-        <th>History</th>
+        <th data-sortable="false">History</th>
       </tr>
     </thead>
 

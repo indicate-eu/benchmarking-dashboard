@@ -2,6 +2,11 @@
 
 {% extends "base.html" %}
 
+{% block script %}
+import {DataTable} from "/static/SimpleDataTables.js"
+window.dt = new DataTable("#overview-table")
+{% endblock %}
+
 {% block content %}
   <h1>Overview</h1>
 
@@ -13,7 +18,7 @@
           <th>Avg. Number of Patients</th>
           <th>Avg. Adherence (own/all)</th>
           <th>Rank</th>
-          <th>History</th>
+          <th data-sortable="false">History</th>
       </tr>
       </thead>
       <tbody>
