@@ -1,3 +1,5 @@
+pydantic
+load-dotenv
 starlette
 uvicorn
 jinja2

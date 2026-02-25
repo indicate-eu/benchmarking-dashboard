@@ -8,11 +8,13 @@ from starlette.routing import Route, Mount
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
-from providers import OpenAPIDataProvider
+from configuration import load_configuration
+from providers import OpenAPIDataProvider, RandomDataProvider
 
 # Configuration
-DEBUG_MODE = True
-DATA_PROVIDER = OpenAPIDataProvider("http://localhost:8080") # RandomDataProvider(num_hospitals=8, num_indicators=8)
+
+
+DATA_PROVIDER = None
 
 
 templates = Jinja2Templates('templates')
@@ -82,7 +84,15 @@ async def indicator_detail(request: Request):
     return templates.TemplateResponse(request, 'detail.html', context=context)
 
 
-app = Starlette(debug=True, routes=[
+# Load configuration and select data provider.
+configuration = load_configuration()
+if configuration.data_provider == 'dummy':
+    DATA_PROVIDER = RandomDataProvider(num_hospitals=8, num_indicators=8)
+elif configuration.data_provider == 'data-exchange-api':
+    DATA_PROVIDER = OpenAPIDataProvider(configuration.data_exchange_endpoint)
+
+
+app = Starlette(debug=configuration.debug_mode, routes=[
     Mount('/static', StaticFiles(directory='static'), name='static'),
     Route('/', overview),
     Route("/indicator/{indicator_id:int}", indicator_detail),
