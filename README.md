@@ -1,22 +1,43 @@
-# ICU Quality Dashboard (prototype)
+## Introduction
 
-This is a small prototype web application that visualizes aggregated quality indicator adherence for intensive care benchmarking. It uses randomly generated data and is intended to demonstrate UI and interactions.
+This projects implements a dashboard web-application for the results of clinical quality indicators which are produced in the INDICATE project.
 
-Prerequisites
-- Python 3.10+ recommended
-- install dependencies:
+## Requirements
+
+* Python 3.10+ recommended
+
+* Access to the INDICATE data exchange server
+
+## Installation
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run
+## Usage
+
+TODO: explain debug mode (once configuration is implemented)
+TODO: explain data exchange server configuration (once configuration is implemented)
 
 ```bash
-python app.py
+LISTEN_ADDRESS=127.0.0.1 LISTEN_PORT=5000 python app.py
 # then open http://127.0.0.1:5000
 ```
 
-Notes
-- The app uses a `RandomDataProvider` (in `providers.py`). Replace or extend with an `OpenAPIDataProvider` later to fetch real data from the central hub.
-- Date range selector in the top bar controls displayed period.
+## Licenses
+
+Unless stated otherwise for specific files, the code in this repository is made available under the Apache 2.0 license - see `COPYING` for the license text.
+
+This project uses the following libraries and assets:
+
+* Javascript library simple-datatables
+
+  Files from the simple-datatables library have been copied into this project as `static/SimpleDataTables.css` and `static/SimpleDataTables.js`.
+
+  The simple-datatables library is made available under the LGPLv3 license at https://github.com/fiduswriter/simple-datatables.
+
+* "monitoring-health" SVG icon
+
+  The SVG image "monitoring-health" has been copied into this project as `static/favicon.svg`.
+
+  The "monitoring-health" SVG image by Denali Design is made available under the MIT License at https://www.svgrepo.com/svg/445892/monitoring-health.
