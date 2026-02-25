@@ -1,7 +1,8 @@
 import random
 from datetime import timedelta
 
-from indicate_data_exchange_client import DefaultApi, ApiClient, Configuration, AggregationPeriodKind
+from indicate_data_exchange_client import DefaultApi, ApiClient, Configuration, AggregationPeriodKind, \
+    AggregatedQualityIndicatorResult
 
 
 class DataProviderBase:
@@ -18,52 +19,59 @@ class RandomDataProvider(DataProviderBase):
         self.num_indicators = num_indicators
         self.seed = seed
 
-    def _date_range(self, start, end):
-        days = (end - start).days + 1
-        for i in range(days):
+    def _date_range(self, period, start, end):
+        days = (end - start).days
+        if period == 'weekly':
+            period_days = 7
+        elif period == 'monthly':
+            period_days = 30
+        elif period == 'yearly':
+            period_days = 365
+        for i in range(0, days, period_days):
             yield start + timedelta(days=i)
 
-    def _rand_series(self, seed_base, start, end):
+    def _rand_series(self, seed_base, period, start, end):
         r = random.Random(seed_base)
         series = []
-        for d in self._date_range(start, end):
+        for d in self._date_range(period, start, end):
             # base value between 50 and 95
-            base = r.uniform(50, 95)
+            base = r.uniform(0.50, 0.95)
             # add small day-to-day noise
-            noise = r.uniform(-8, 8)
-            val = max(0.0, min(100.0, base + noise))
-            series.append((d, round(val, 1)))
+            noise = r.uniform(-0.08, 0.08)
+            val = max(0.0, min(1.0, base + noise))
+            series.append((d, val))
         return series
 
     def get_overview(self, period: AggregationPeriodKind, start_date, end_date):
         indicators = []
         for iid in range(1, self.num_indicators + 1):
             name = f"Indicator {iid}"
-            # each indicator has an 'all hospitals' average and 'own' hospital
-            all_series = self._rand_series(seed_base=(self.seed + iid * 100), start=start_date, end=end_date)
-            own_series = self._rand_series(seed_base=(self.seed + iid * 1000), start=start_date, end=end_date)
-
-            avg_all = round(sum(v for _, v in all_series) / len(all_series)) if all_series else 0
-            avg_own = round(sum(v for _, v in own_series) / len(own_series)) if own_series else 0
-
             num_patients = random.Random(self.seed + iid).randint(50, 1200)
-
-            # simulate ranking among hospitals
-            ranks = list(range(1, self.num_hospitals + 1))
-            random.Random(self.seed + iid * 7).shuffle(ranks)
-            rank = ranks[0]
-
-            history = [{'date': d, 'value': v} for d, v in own_series]
-
+            # each indicator has an 'all hospitals' average and 'own' hospital
+            all_series = self._rand_series(seed_base=(self.seed + iid * 100),
+                                           period=period,
+                                           start=start_date,
+                                           end=end_date)
+            own_series = self._rand_series(seed_base=(self.seed + iid * 1000),
+                                           period=period,
+                                           start=start_date,
+                                           end=end_date)
+            avg_all = sum(v for _, v in all_series) / len(all_series) if all_series else 0
+            avg_own = sum(v for _, v in own_series) / len(own_series) if own_series else 0
+            if avg_own < avg_all:
+                rank = random.randint(1, self.num_hospitals // 2)
+            else:
+                rank = random.randint(max(1, self.num_hospitals // 2), self.num_hospitals)
+            history = [{'date': d, 'value': v, 'observation_count': 100} for d, v in own_series]
             indicators.append({
-                'id': iid,
-                'name': name,
+                'id':            iid,
+                'name':          name,
                 'num_hospitals': self.num_hospitals,
-                'num_patients': num_patients,
-                'avg_own': avg_own,
-                'avg_all': avg_all,
-                'rank': f"{rank} / {self.num_hospitals}",
-                'history': history,
+                'num_patients':  num_patients,
+                'avg_own':       avg_own,
+                'avg_all':       avg_all,
+                'rank':          rank,
+                'history':       history,
             })
 
         return indicators
@@ -76,55 +84,54 @@ class RandomDataProvider(DataProviderBase):
         description = f"Detailed description for {name}. This explains how adherence is computed and what it means."
 
         # For each hospital produce a row
-        providers = []
+        providers_temp = []
         seeds = [self.seed + indicator_id * 100 + i for i in range(self.num_hospitals)]
-        averages = []
-        series_list = []
         for i, s in enumerate(seeds):
-            ser = self._rand_series(seed_base=s, start=start_date, end=end_date)
-            avg = round(sum(v for _, v in ser) / len(ser)) if ser else 0
-            averages.append((i, avg))
-            series_list.append(ser)
-
-        # sort descending by average
-        averages.sort(key=lambda x: x[1], reverse=True)
+            ser = self._rand_series(seed_base=s, period=period, start=start_date, end=end_date)
+            avg = sum(v for _, v in ser) / len(ser) if ser else 0
+            providers_temp.append({'avg': avg, 'series': ser})
+        providers_temp.sort(key=lambda x: x['avg'], reverse=True)
 
         # pick one index as 'own' hospital; let's choose the middle index
-        own_index = self.num_hospitals // 2
-
-        for rank_pos, (orig_idx, avg) in enumerate(averages, start=1):
-            ser = series_list[orig_idx]
-            label = "My Location" if orig_idx == own_index else "********"
+        own_index = len(providers_temp) // 2
+        providers = []
+        for rank, info in enumerate(providers_temp, start=1):
+            avg, ser = info['avg'], info['series']
+            label = "My Location" if rank == own_index else "********"
             providers.append({
-                'rank': rank_pos,
-                'label': label,
-                'num_patients': random.Random(self.seed + indicator_id * 13 + orig_idx).randint(10, 800),
-                'avg': avg,
-                'history': [{'date': d, 'value': v} for d, v in ser],
+                'rank':         rank,
+                'label':        label,
+                'num_patients': random.Random(self.seed + indicator_id * 13 + rank).randint(10, 800),
+                'avg':          avg,
+                'history':      [{'date': d, 'value': v, 'observation_count': 100} for d, v in ser],
             })
-
-        return {'id': indicator_id, 'name': name, 'description': description, 'providers': providers}
+        return {'id': indicator_id,
+                'name': name,
+                'description': description,
+                'providers': providers}
 
 
 class OpenAPIDataProvider(DataProviderBase):
-    def __init__(self, base_url):
+    def __init__(self, base_url, provider_id):
         self.base_url = base_url
-        self.api = DefaultApi(ApiClient(configuration=Configuration(host=base_url))) # TODO base_url
+        self.api = DefaultApi(ApiClient(configuration=Configuration(host=base_url)))
+        self.provider_id = provider_id
 
     def _get_indicators_info(self):
         return self.api.indicator_info_get()
 
 
     def get_overview(self, period: AggregationPeriodKind, start_date, end_date):
+        # Get meta-data (title, description, etc.) for all indicators.
         # TODO: could cache this
         indicators_info = self._get_indicators_info()
         def find_indicator_info(indicator_id):
             return next((indicator_info for indicator_info in indicators_info
                          if indicator_info.concept_id == indicator_id),
                         None)
-        #
-        response = self.api.results_get(period, period_start=start_date, period_end=end_date)
 
+        # Get
+        response = self.api.results_get(period, period_start=start_date, period_end=end_date)
         #
         indicator_results = {}
         def ensure_indicator(indicator_id):
@@ -133,49 +140,56 @@ class OpenAPIDataProvider(DataProviderBase):
                 indicator_results[indicator_id] = {
                     'id':                 indicator_id,
                     'title':              indicator_info.title,
-                    'providers':          set(),
+                    'providers':          {},
                     'values':             [],
                     'observation_counts': [],
                     'history':            [],
                 }
             return indicator_results[indicator_id]
-        def add_to_history(history, observation):
+        def add_to_provider(indicator_result, provider, observation):
+            providers = indicator_result['providers']
+            if provider not in providers:
+                providers[provider] = []
+            providers[provider].append(observation)
+        def add_to_history(history, observation: AggregatedQualityIndicatorResult):
             cell = next((cell for cell in history if cell['date'] == observation.aggregation_period_start), None)
             if cell is None:
                 cell = {
-                    'date':               quality_indicator_data.aggregation_period_start,
+                    'date':               observation.aggregation_period_start.date(),
                     'values':             [],
                     'observation_counts': [],
                 }
                 history.append(cell)
-            cell['values'].append(quality_indicator_data.average_value)
-            cell['observation_counts'].append(quality_indicator_data.observation_count)
+            cell['values'].append(observation.average_value)
+            cell['observation_counts'].append(observation.observation_count)
 
         for quality_indicator_data in response:
             indicator_result = ensure_indicator(quality_indicator_data.indicator_id)
-            indicator_result['providers'] |= { quality_indicator_data.provider_id }
-            add_to_history(indicator_result['history'], quality_indicator_data)
+            #indicator_result['providers'] |= { quality_indicator_data.provider_id }
+            add_to_provider(indicator_result, quality_indicator_data.provider_id, quality_indicator_data)
             indicator_result['values'].append(quality_indicator_data.average_value)
             indicator_result['observation_counts'].append(quality_indicator_data.observation_count)
+            add_to_history(indicator_result['history'], quality_indicator_data)
 
         #
         def aggregate_history(history):
             return [
                 {
-                    "date": cell["date"].date(),
-                    "value": sum(cell["values"]) / len(cell["values"]),
+                    "date":              cell["date"],
+                    "value":             sum(cell["values"]) / len(cell["values"]),
                     "observation_count": sum(cell["observation_counts"])
                 }
                 for cell in history
             ]
         def format_indicator_result(indicator_result):
+            own_values = indicator_result['providers']['d6b26000-1179-11f1-a524-3afa61a16d28']
             history = indicator_result['history']
             return {
                 'id':            indicator_result['id'],
                 'name':          indicator_result['title'],
                 'num_hospitals': len(indicator_result['providers']),
                 'num_patients':  sum(indicator_result['observation_counts']) / len(history),
-                'avg_own':       0,
+                'avg_own':       sum(result.average_value for result in own_values) / len(own_values),
                 'avg_all':       sum(indicator_result['values']) / len(history),
                 'rank':          0,
                 'history':       aggregate_history(history),
