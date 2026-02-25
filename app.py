@@ -1,20 +1,25 @@
 from datetime import datetime, timedelta, date
 from typing import Tuple, cast
 
-from flask import Flask, render_template, request, Request
 from indicate_data_exchange_client import AggregationPeriodKind
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.routing import Route, Mount
+from starlette.staticfiles import StaticFiles
+from starlette.templating import Jinja2Templates
 
 from providers import OpenAPIDataProvider
-
-app = Flask(__name__)
 
 # Configuration
 DEBUG_MODE = True
 DATA_PROVIDER = OpenAPIDataProvider("http://localhost:8080") # RandomDataProvider(num_hospitals=8, num_indicators=8)
 
 
-def parse_date(qname, default):
-    s = request.args.get(qname)
+templates = Jinja2Templates('templates')
+
+
+def parse_date(request: Request, qname, default):
+    s = request.query_params.get(qname)
     if not s:
         return default
     try:
@@ -35,7 +40,7 @@ def special_times():
 
 def handle_time_parameters(request: Request) \
         -> Tuple[AggregationPeriodKind, date, date]:
-    period = request.args.get('period', 'weekly')
+    period = request.query_params.get('period', 'weekly')
     if period not in ['weekly', 'monthly', 'yearly']:
         raise RuntimeError(f'Bad period: {period}; must be weekly, monthly or yearly')
     period = cast(AggregationPeriodKind, period)
@@ -44,35 +49,41 @@ def handle_time_parameters(request: Request) \
     default_end = today
     default_start = today - timedelta(days=29)
 
-    start = cast(date, parse_date("start", default_start))
-    end = cast(date, parse_date("end", default_end))
+    start = cast(date, parse_date(request, "start", default_start))
+    end = cast(date, parse_date(request, "end", default_end))
 
     return period, start, end
 
 
-@app.route("/")
-def overview():
+async def overview(request):
     period, start, end = handle_time_parameters(request)
     indicators = DATA_PROVIDER.get_overview(period, start, end)
-    return render_template("overview.html",
-                           indicators=indicators,
-                           period=period,
-                           start=start,
-                           end=end,
-                           times=special_times())
+    context = {
+        "indicators": indicators,
+        "period": period,
+        "start": start,
+        "end": end,
+        "times": special_times(),
+    }
+    return templates.TemplateResponse(request, 'overview.html', context=context)
 
 
-@app.route("/indicator/<int:indicator_id>")
-def indicator_detail(indicator_id):
+async def indicator_detail(request: Request):
+    indicator_id = request.path_params['indicator_id']
     period, start, end = handle_time_parameters(request)
     detail = DATA_PROVIDER.get_indicator_detail(indicator_id, period, start, end)
-    return render_template("detail.html",
-                           detail=detail,
-                           period=period,
-                           start=start,
-                           end=end,
-                           times=special_times())
+    context = {
+        "detail": detail,
+        "period": period,
+        "start": start,
+        "end": end,
+        "times": special_times(),
+    }
+    return templates.TemplateResponse(request, 'detail.html', context=context)
 
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+app = Starlette(debug=True, routes=[
+    Mount('/static', StaticFiles(directory='static'), name='static'),
+    Route('/', overview),
+    Route("/indicator/{indicator_id:int}", indicator_detail),
+])
