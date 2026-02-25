@@ -25,7 +25,7 @@ window.dt = new DataTable("#detail")
     <tbody>
     {% for p in providers %}
     <tr class="table detail-table row {% if p.is_self  %}self{% endif %}">
-      <td class="rank">{{ p.rank }}</td>
+      <td class="rank">{{ p.rank }} / {{ detail.providers|length }} </td>
       <td class="provider">{{ p.label }}</td>
       <td>{{ '%.2f' % p.num_patients }}</td>
       <td>{{ '%.2f' % p.avg }} %</td>

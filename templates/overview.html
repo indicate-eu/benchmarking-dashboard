@@ -51,7 +51,7 @@ window.dt = new DataTable("#overview-table")
               </td>
               <td>
                   <a href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
-                      {{ ind.rank }}
+                      {{ ind.rank }} / {{ ind.num_hospitals }}
                   </a>
               </td>
           {% else %}
