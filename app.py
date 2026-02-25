@@ -1,6 +1,10 @@
-from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for
-from providers import RandomDataProvider, OpenAPIDataProvider
+from datetime import datetime, timedelta, date
+from typing import Tuple, cast
+
+from flask import Flask, render_template, request, Request
+from indicate_data_exchange_client import AggregationPeriodKind
+
+from providers import OpenAPIDataProvider
 
 app = Flask(__name__)
 
@@ -19,35 +23,55 @@ def parse_date(qname, default):
         return default
 
 
-@app.route("/")
-def overview():
-    today = datetime.today().date()
+def special_times():
+    today = date.today()
+    return {
+        "year_start":  today - timedelta(days=365),
+        "month_start": today - timedelta(days=30),
+        "week_start":  today - timedelta(days=7),
+        "today":       today,
+    }
+
+
+def handle_time_parameters(request: Request) \
+        -> Tuple[AggregationPeriodKind, date, date]:
+    period = request.args.get('period', 'weekly')
+    if period not in ['weekly', 'monthly', 'yearly']:
+        raise RuntimeError(f'Bad period: {period}; must be weekly, monthly or yearly')
+    period = cast(AggregationPeriodKind, period)
+
+    today = date.today()
     default_end = today
     default_start = today - timedelta(days=29)
 
-    start = parse_date("start", default_start)
-    end = parse_date("end", default_end)
+    start = cast(date, parse_date("start", default_start))
+    end = cast(date, parse_date("end", default_end))
 
-    indicators = DATA_PROVIDER.get_overview(start, end)
+    return period, start, end
 
-    return render_template("overview.html", indicators=indicators, start=start, end=end)
+
+@app.route("/")
+def overview():
+    period, start, end = handle_time_parameters(request)
+    indicators = DATA_PROVIDER.get_overview(period, start, end)
+    return render_template("overview.html",
+                           indicators=indicators,
+                           period=period,
+                           start=start,
+                           end=end,
+                           times=special_times())
 
 
 @app.route("/indicator/<int:indicator_id>")
 def indicator_detail(indicator_id):
-    today = datetime.today().date()
-    default_end = today
-    default_start = today - timedelta(days=29)
-
-    start = parse_date("start", default_start)
-    end = parse_date("end", default_end)
-
-    detail = DATA_PROVIDER.get_indicator_detail(indicator_id, start, end)
-
-    if detail is None:
-        return redirect(url_for("overview"))
-
-    return render_template("detail.html", detail=detail, start=start, end=end)
+    period, start, end = handle_time_parameters(request)
+    detail = DATA_PROVIDER.get_indicator_detail(indicator_id, period, start, end)
+    return render_template("detail.html",
+                           detail=detail,
+                           period=period,
+                           start=start,
+                           end=end,
+                           times=special_times())
 
 
 if __name__ == "__main__":

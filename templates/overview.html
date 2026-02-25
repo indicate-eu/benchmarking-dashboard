@@ -1,32 +1,59 @@
+{% from "history-cell.html" import history_cell %}
+
 {% extends "base.html" %}
 
 {% block content %}
   <h1>Overview</h1>
 
-  <div class="grid">
-    <div class="table overview-table header">
-      <div>Indicator</div>
-      <div>Number of Hospitals</div>
-      <div>Number of Patients</div>
-      <div>Avg. Adherence (own/all)</div>
-      <div>Rank</div>
-      <div>History</div>
-    </div>
-
-    {% for ind in indicators %}
-    <a class="table overview-table row" href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
-      <div class="name">{{ ind.name }}</div>
-      <div>{{ ind.num_hospitals }}</div>
-      <div>{{ ind.num_patients }}</div>
-      <div>{{ ind.avg_own }} % / {{ ind.avg_all }} %</div>
-      <div>{{ ind.rank }}</div>
-      <div class="history">
-        {% for cell in ind.history %}
-          <div class="histcell" title="{{ cell.date }}: {{ cell.value }} %" style="background-color: rgb({{ (255*(1 - (cell.value/100)))|int }}, {{ (255*(cell.value/100))|int }}, 80);"></div>
-        {% endfor %}
-      </div>
-    </a>
-    {% endfor %}
-  </div>
+  <table id="overview-table" class="grid">
+      <thead>
+      <tr class="table overview-table header">
+          <th>Indicator</th>
+          <th>Number of Hospitals</th>
+          <th>Avg. Number of Patients</th>
+          <th>Avg. Adherence (own/all)</th>
+          <th>Rank</th>
+          <th>History</th>
+      </tr>
+      </thead>
+      <tbody>
+      {% for ind in indicators %}
+      <tr class="table overview-table row">
+          <td class="name">
+              <a href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
+                  {{ ind.name }}
+              </a>
+          </td>
+          <td>
+              <a href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
+                  {{ ind.num_hospitals }}
+              </a>
+          </td>
+          <td>
+              <a href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
+                  {{ '%.2f' % ind.num_patients }}
+              </a>
+          </td>
+          <td>
+              <a href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
+                  {{ '%.2f' % (100*ind.avg_own) }} % / {{ '%.2f' % (100*ind.avg_all) }} %
+              </a>
+          </td>
+          <td>
+              <a href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
+                  {{ ind.rank }}
+              </a>
+          </td>
+          <td>
+              <a class="history" href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
+                  {% for cell in ind.history %}
+                  {{ history_cell(cell.date, cell.value, cell.observation_count) }}
+                  {% endfor %}
+              </a>
+          </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+  </table>
 
 {% endblock %}

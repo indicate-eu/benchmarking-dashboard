@@ -5,10 +5,10 @@ from indicate_data_exchange_client import DefaultApi, ApiClient, Configuration, 
 
 
 class DataProviderBase:
-    def get_overview(self, start_date, end_date):
+    def get_overview(self, period: AggregationPeriodKind, start_date, end_date):
         raise NotImplementedError()
 
-    def get_indicator_detail(self, indicator_id, start_date, end_date):
+    def get_indicator_detail(self, indicator_id, period: AggregationPeriodKind, start_date, end_date):
         raise NotImplementedError()
 
 
@@ -35,7 +35,7 @@ class RandomDataProvider(DataProviderBase):
             series.append((d, round(val, 1)))
         return series
 
-    def get_overview(self, start_date, end_date):
+    def get_overview(self, period: AggregationPeriodKind, start_date, end_date):
         indicators = []
         for iid in range(1, self.num_indicators + 1):
             name = f"Indicator {iid}"
@@ -68,7 +68,7 @@ class RandomDataProvider(DataProviderBase):
 
         return indicators
 
-    def get_indicator_detail(self, indicator_id, start_date, end_date):
+    def get_indicator_detail(self, indicator_id, period: AggregationPeriodKind, start_date, end_date):
         if indicator_id < 1 or indicator_id > self.num_indicators:
             return None
 
@@ -115,54 +115,78 @@ class OpenAPIDataProvider(DataProviderBase):
         return self.api.indicator_info_get()
 
 
-    def get_overview(self, start_date, end_date):
+    def get_overview(self, period: AggregationPeriodKind, start_date, end_date):
         # TODO: could cache this
         indicators_info = self._get_indicators_info()
         def find_indicator_info(indicator_id):
             return next((indicator_info for indicator_info in indicators_info
-                         if indicator_info.indicator_id == indicator_id),
+                         if indicator_info.concept_id == indicator_id),
                         None)
         #
-        response = self.api.results_get(AggregationPeriodKind.WEEKLY)
+        response = self.api.results_get(period, period_start=start_date, period_end=end_date)
+
         #
         indicator_results = {}
         def ensure_indicator(indicator_id):
             if indicator_id not in indicator_results:
                 indicator_info = find_indicator_info(indicator_id)
                 indicator_results[indicator_id] = {
-                    'id':        indicator_id,
-                    'title':     indicator_info.title,
-                    'providers': set(),
-                    'history':   [],
-                    'values':    [],
+                    'id':                 indicator_id,
+                    'title':              indicator_info.title,
+                    'providers':          set(),
+                    'values':             [],
+                    'observation_counts': [],
+                    'history':            [],
                 }
             return indicator_results[indicator_id]
+        def add_to_history(history, observation):
+            cell = next((cell for cell in history if cell['date'] == observation.aggregation_period_start), None)
+            if cell is None:
+                cell = {
+                    'date':               quality_indicator_data.aggregation_period_start,
+                    'values':             [],
+                    'observation_counts': [],
+                }
+                history.append(cell)
+            cell['values'].append(quality_indicator_data.average_value)
+            cell['observation_counts'].append(quality_indicator_data.observation_count)
+
         for quality_indicator_data in response:
             indicator_result = ensure_indicator(quality_indicator_data.indicator_id)
             indicator_result['providers'] |= { quality_indicator_data.provider_id }
-            indicator_result['history'].append({
-                'date':              quality_indicator_data.aggregation_period_start,
-                'value':             quality_indicator_data.average_value,
-                'observation_count': quality_indicator_data.observation_count,
-            })
+            add_to_history(indicator_result['history'], quality_indicator_data)
             indicator_result['values'].append(quality_indicator_data.average_value)
-            indicator_result['total_observation_count'].append(quality_indicator_data.observation_count)
-        return [ {
-            'id':            indicator_result['id'],
-            'name':          indicator_result['title'],
-            'num_hospitals': len(indicator_result['providers']),
-            'num_patients':  sum(indicator_result['total_observation_count']),
-            'avg_own':       0,
-            'avg_all':       sum(indicator_result['values']) / len(indicator_result['values']),
-            'rank':          0,
-            'history':       indicator_result['history'],
-        } for indicator_result in indicator_results.values() ]
+            indicator_result['observation_counts'].append(quality_indicator_data.observation_count)
 
-    def get_indicator_detail(self, indicator_id, start_date, end_date):
+        #
+        def aggregate_history(history):
+            return [
+                {
+                    "date": cell["date"].date(),
+                    "value": sum(cell["values"]) / len(cell["values"]),
+                    "observation_count": sum(cell["observation_counts"])
+                }
+                for cell in history
+            ]
+        def format_indicator_result(indicator_result):
+            history = indicator_result['history']
+            return {
+                'id':            indicator_result['id'],
+                'name':          indicator_result['title'],
+                'num_hospitals': len(indicator_result['providers']),
+                'num_patients':  sum(indicator_result['observation_counts']) / len(history),
+                'avg_own':       0,
+                'avg_all':       sum(indicator_result['values']) / len(history),
+                'rank':          0,
+                'history':       aggregate_history(history),
+            }
+        return [ format_indicator_result(indicator_result) for indicator_result in indicator_results.values() ]
+
+    def get_indicator_detail(self, indicator_id, period: AggregationPeriodKind, start_date, end_date):
         indicators_info = self._get_indicators_info()
         # TODO: handle error
-        indicator_info = next((info for info in indicators_info if info.indicator_id == indicator_id), None)
-        response = self.api.results_get(AggregationPeriodKind.WEEKLY)
+        indicator_info = next((info for info in indicators_info if info.concept_id == indicator_id), None)
+        response = self.api.results_get(period, period_start=start_date, period_end=end_date)
         provider_results = {}
 
         def ensure_provider(provider_id):
@@ -179,7 +203,7 @@ class OpenAPIDataProvider(DataProviderBase):
             if quality_indicator_data.indicator_id == indicator_id:
                 provider_result = ensure_provider(quality_indicator_data.provider_id)
                 provider_result['history'].append({
-                    'date':              quality_indicator_data.aggregation_period_start,
+                    'date':              quality_indicator_data.aggregation_period_start.date(),
                     'value':             quality_indicator_data.average_value,
                     'observation_count': quality_indicator_data.observation_count
                 })

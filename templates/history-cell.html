@@ -1,0 +1,6 @@
+{% macro history_cell(date, value, observation_count) -%}
+<div class="histcell"
+     title="{{ date }}: {{ '%.2f' % (100*value) }} %, based on {{ observation_count }} Patients"
+     style="background-color: hsl({{ (120 * value)|int }}, 50%, 50%);"></div>
+<!-- style="background-color: rgb({{ (255*(1 - value))|int }}, {{ (255*value)|int }}, 80);" -->
+{%- endmacro %}
