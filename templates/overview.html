@@ -16,8 +16,12 @@ window.dt = new DataTable("#overview-table")
           <th>Indicator</th>
           <th>Number of Hospitals</th>
           <th>Avg. Number of Patients</th>
-          <th>Avg. Adherence (own/all)</th>
-          <th>Rank</th>
+          {% if with_provider_id %}
+              <th>Avg. Adherence (own/all)</th>
+              <th>Rank</th>
+          {% else %}
+              <th>Avg. Adherence</th>
+          {% endif %}
           <th data-sortable="false">History</th>
       </tr>
       </thead>
@@ -39,16 +43,24 @@ window.dt = new DataTable("#overview-table")
                   {{ '%.2f' % ind.num_patients }}
               </a>
           </td>
-          <td>
-              <a href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
-                  {{ '%.2f' % (100*ind.avg_own) }} % / {{ '%.2f' % (100*ind.avg_all) }} %
-              </a>
-          </td>
-          <td>
-              <a href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
-                  {{ ind.rank }}
-              </a>
-          </td>
+          {% if with_provider_id %}
+              <td>
+                  <a href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
+                      {{ '%.2f' % (100*ind.avg_own) }} % / {{ '%.2f' % (100*ind.avg_all) }} %
+                  </a>
+              </td>
+              <td>
+                  <a href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
+                      {{ ind.rank }}
+                  </a>
+              </td>
+          {% else %}
+              <td>
+                  <a href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
+                      {{ '%.2f' % (100*ind.avg_all) }} %
+                  </a>
+              </td>
+          {% endif %}
           <td>
               <a class="history" href="/indicator/{{ ind.id }}?start={{ start }}&end={{ end }}">
                   {% for cell in ind.history %}

@@ -8,8 +8,8 @@ window.dt = new DataTable("#detail")
 
 {% block content %}
   <a class="back" href="/?start={{ start }}&end={{ end }}">← Back to overview</a>
-  <h1>{{ detail.name }}</h1>
-  <p class="muted">{{ detail.description }}</p>
+  <h1>{{ name }}</h1>
+  <p class="muted">{{ description }}</p>
 
   <table id="detail" class="grid">
     <thead>
@@ -23,7 +23,7 @@ window.dt = new DataTable("#detail")
     </thead>
 
     <tbody>
-    {% for p in detail.providers %}
+    {% for p in providers %}
     <tr class="table detail-table row {% if p.is_self  %}self{% endif %}">
       <td class="rank">{{ p.rank }}</td>
       <td class="provider">{{ p.label }}</td>

@@ -74,7 +74,7 @@ class RandomDataProvider(DataProviderBase):
                 'history':       history,
             })
 
-        return indicators
+        return { 'with_provider_id': True, 'indicators': indicators }
 
     def get_indicator_detail(self, indicator_id, period: AggregationPeriodKind, start_date, end_date):
         if indicator_id < 1 or indicator_id > self.num_indicators:
@@ -165,7 +165,6 @@ class OpenAPIDataProvider(DataProviderBase):
 
         for quality_indicator_data in response:
             indicator_result = ensure_indicator(quality_indicator_data.indicator_id)
-            #indicator_result['providers'] |= { quality_indicator_data.provider_id }
             add_to_provider(indicator_result, quality_indicator_data.provider_id, quality_indicator_data)
             indicator_result['values'].append(quality_indicator_data.average_value)
             indicator_result['observation_counts'].append(quality_indicator_data.observation_count)
@@ -184,17 +183,23 @@ class OpenAPIDataProvider(DataProviderBase):
         def format_indicator_result(indicator_result):
             own_values = indicator_result['providers']['d6b26000-1179-11f1-a524-3afa61a16d28']
             history = indicator_result['history']
-            return {
+            result = {
                 'id':            indicator_result['id'],
                 'name':          indicator_result['title'],
                 'num_hospitals': len(indicator_result['providers']),
                 'num_patients':  sum(indicator_result['observation_counts']) / len(history),
-                'avg_own':       sum(result.average_value for result in own_values) / len(own_values),
                 'avg_all':       sum(indicator_result['values']) / len(history),
-                'rank':          0,
                 'history':       aggregate_history(history),
             }
-        return [ format_indicator_result(indicator_result) for indicator_result in indicator_results.values() ]
+            if self.provider_id is not None:
+                result['avg_own'] = sum(result.average_value for result in own_values) / len(own_values)
+                result['rank']    = 0
+            return result
+        return {
+            'with_provider_id': self.provider_id is not None,
+            'indicators':       [ format_indicator_result(indicator_result)
+                                  for indicator_result in indicator_results.values() ]
+        }
 
     def get_indicator_detail(self, indicator_id, period: AggregationPeriodKind, start_date, end_date):
         indicators_info = self._get_indicators_info()
@@ -225,7 +230,8 @@ class OpenAPIDataProvider(DataProviderBase):
                 provider_result['observation_counts'].append(quality_indicator_data.observation_count)
         #
         def format_provider_data(provider_result):
-            is_self = provider_result['provider_id'] == 'e1bb92b8-0b84-11f1-9501-ee84309d5cdc'
+            print(f"{provider_result['provider_id']} == {self.provider_id}")
+            is_self = (provider_result['provider_id'] == self.provider_id)
             return {
                 'is_self':      is_self,
                 'rank':         0,
@@ -235,9 +241,10 @@ class OpenAPIDataProvider(DataProviderBase):
                 'history':      provider_result['history'],
             }
         return {
-            'id':          indicator_id,
-            'name':        indicator_info.title,
-            'description': indicator_info.description,
-            'providers':   [ format_provider_data(provider_result)
-                             for provider_result in provider_results.values()]
+            'with_provider_id': self.provider_id is not None,
+            'id':               indicator_id,
+            'name':             indicator_info.title,
+            'description':      indicator_info.description,
+            'providers':        [ format_provider_data(provider_result)
+                                  for provider_result in provider_results.values()]
         }

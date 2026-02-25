@@ -24,27 +24,26 @@
         <a class="fakebutton" href="?start={{ times.year_start }}&end={{ times.today }}">Last Year</a>
         <a class="fakebutton" href="?start={{ times.month_start }}&end={{ times.today }}">Last Month</a>
         <a class="fakebutton" href="?start={{ times.week_start }}&end={{ times.today }}">Last Week</a>
-        <span style="width: 40px; border-left: 1px solid"></span>
 
         {% if period == 'weekly' %}
-        <div class="fakebutton active">Weekly</div>
+            <div class="fakebutton active">Weekly</div>
         {% else %}
-        <a class="fakebutton" href="?period=weekly&start={{ start }}&end={{ end }}">Weekly</a>
+            <a class="fakebutton" href="?period=weekly&start={{ start }}&end={{ end }}">Weekly</a>
         {% endif %}
 
         {% if period == 'monthly' %}
-        <div class="fakebutton active">Monthly</div>
+            <div class="fakebutton active">Monthly</div>
         {% else %}
-        <a class="fakebutton" href="?period=monthly&start={{ start }}&end={{ end }}">Montly</a>
+            <a class="fakebutton" href="?period=monthly&start={{ start }}&end={{ end }}">Montly</a>
         {% endif %}
 
         {% if period == 'yearly' %}
-        <div class="fakebutton active">Yearly</div>
+            <div class="fakebutton active">Yearly</div>
         {% else %}
-        <a class="fakebutton" href="?period=yearly&start={{ start }}&end={{ end }}">Yearly</a>
+            <a class="fakebutton" href="?period=yearly&start={{ start }}&end={{ end }}">Yearly</a>
         {% endif %}
       <nav class="navlinks">
-        <a href="/">Overview</a>
+          <a href="/">Overview</a>
       </nav>
     </div>
 

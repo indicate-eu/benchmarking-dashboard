@@ -59,13 +59,14 @@ def handle_time_parameters(request: Request) \
 
 async def overview(request):
     period, start, end = handle_time_parameters(request)
-    indicators = DATA_PROVIDER.get_overview(period, start, end)
+    overview_data = DATA_PROVIDER.get_overview(period, start, end)
     context = {
-        "indicators": indicators,
-        "period": period,
-        "start": start,
-        "end": end,
-        "times": special_times(),
+        "period":           period,
+        "start":            start,
+        "end":              end,
+        "times":            special_times(),
+        'with_provider_id': overview_data['with_provider_id'],
+        "indicators":       overview_data['indicators'],
     }
     return templates.TemplateResponse(request, 'overview.html', context=context)
 
@@ -73,13 +74,16 @@ async def overview(request):
 async def indicator_detail(request: Request):
     indicator_id = request.path_params['indicator_id']
     period, start, end = handle_time_parameters(request)
-    detail = DATA_PROVIDER.get_indicator_detail(indicator_id, period, start, end)
+    detail_data = DATA_PROVIDER.get_indicator_detail(indicator_id, period, start, end)
     context = {
-        "detail": detail,
-        "period": period,
-        "start": start,
-        "end": end,
-        "times": special_times(),
+        "period":           period,
+        "start":            start,
+        "end":              end,
+        "times":            special_times(),
+        'with_provider_id': detail_data['with_provider_id'],
+        'name':             detail_data['name'],
+        'description':      detail_data['description'],
+        "providers":        detail_data['providers'],
     }
     return templates.TemplateResponse(request, 'detail.html', context=context)
 
@@ -89,7 +93,7 @@ configuration = load_configuration()
 if configuration.data_provider == 'dummy':
     DATA_PROVIDER = RandomDataProvider(num_hospitals=8, num_indicators=8)
 elif configuration.data_provider == 'data-exchange-api':
-    DATA_PROVIDER = OpenAPIDataProvider(configuration.data_exchange_endpoint)
+    DATA_PROVIDER = OpenAPIDataProvider(configuration.data_exchange_endpoint, configuration.provider_id)
 
 
 app = Starlette(debug=configuration.debug_mode, routes=[

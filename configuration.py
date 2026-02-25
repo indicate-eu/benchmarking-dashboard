@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Literal, Optional
 
 from load_dotenv import load_dotenv
@@ -25,6 +26,11 @@ class Configuration(BaseModel):
         default=None,
         description="REST endpoint for the INDICATE data exchange server"
     )
+
+    provider_id: Optional[str] = Field(
+        default=None,
+        pattern=re.compile('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{8}'),
+        description='TODO')
 
 
 def load_configuration(config_file: str = ".env") -> Configuration:
