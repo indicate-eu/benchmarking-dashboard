@@ -5,12 +5,14 @@ from typing import Literal, Optional
 from load_dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
+
 DataProvider = Literal['data-exchange-api', 'dummy']
 
 
 class Configuration(BaseModel):
-    debug_mode: bool = Field(default=False,
-                             description="Use random data instead of connecting to the data exchange server")
+    debug_mode: bool = Field(
+        default=False,
+        description="Enable additional debug output.")
 
     listen_address: str = Field(default="0.0.0.0",
                                 description="Address on which the dashboard web-server should listen")
@@ -19,18 +21,23 @@ class Configuration(BaseModel):
                              le=65535,
                              description="Port on which the dashboard web-server should listen")
 
-    data_provider: DataProvider = Field(default='data-exchange-api',
-                                        description='TODO')
+    data_provider: DataProvider = Field(
+        default='data-exchange-api',
+        description="""The data source to use for the dashboard.
+Either 'data-exchange-api' for retrieving data from the INDICATE hub or 'dummy' for displaying randomly generated \
+placeholder data.""")
 
     data_exchange_endpoint: Optional[str] = Field(
         default=None,
-        description="REST endpoint for the INDICATE data exchange server"
-    )
+        description="""REST endpoint at which the INDICATE data exchange server should be contacted.
+The value should be a HTTP URL.""")
 
     provider_id: Optional[str] = Field(
         default=None,
         pattern=re.compile('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{8}'),
-        description='TODO')
+        description="""If provided, unique id of the data provider running the dashboard.
+The id is used to identify and highlight the data providers "own" data within the aggregated multi-center data \
+obtained from the hub.""")
 
     provider_name: Optional[str] = Field(
         default=None,
@@ -45,19 +52,39 @@ def load_configuration(config_file: str = ".env") -> Configuration:
     """
     load_dotenv(config_file)
 
-    provider_id = os.getenv("PROVIDER_ID")
-    if provider_id is None:
-        provider_id_file = os.getenv("PROVIDER_ID_FILE")
-        if provider_id_file is not None:
-            with open(provider_id_file) as file:
-                provider_id = file.read().strip()
+    args = {}
+    def maybe_from_env(key, variable_name, transform=None):
+        value = os.getenv(variable_name)
+        if value is None:
+            filename = os.getenv(f"{variable_name}_FILE")
+            if filename is not None:
+                with open(filename) as file:
+                    value = file.read().strip()
 
-    from_environment = {
-        "listen_address":         os.getenv("LISTEN_ADDRESS"),
-        "listen_port":            os.getenv("LISTEN_PORT"),
-        "data_provider":          os.getenv("DATA_PROVIDER"),
-        "data_exchange_endpoint": os.getenv("DATA_EXCHANGE_ENDPOINT"),
-        "provider_id":            provider_id,
-    }
-    args = {k: v for k, v in from_environment.items() if v is not None}
-    return Configuration(**args)
+        if value is not None:
+            if transform:
+                value = transform(value)
+            container = args
+            if isinstance(key, tuple):
+                for step in key[:-1]:
+                    if step not in container:
+                        container[step] = {}
+                    container = container[step]
+                key = key[-1]
+            container[key] = value
+
+    maybe_from_env("listen_address", "LISTEN_ADDRESS")
+    maybe_from_env("listen_port", "LISTEN_PORT", int)
+
+    maybe_from_env("data_provider", "DATA_PROVIDER")
+    maybe_from_env("data_exchange_endpoint", "DATA_EXCHANGE_ENDPOINT")
+
+    maybe_from_env("provider_id", "PROVIDER_ID")
+    maybe_from_env("provider_name", "PROVIDER_NAME")
+
+    configuration = Configuration(**args)
+    if (configuration.data_provider == 'data-exchange-api'
+            and configuration.data_exchange_endpoint is None):
+        raise RuntimeError(f"When backend '{configuration.data_provider}' is used, DATA_EXCHANGE_ENDPOINT must be \
+configured.")
+    return configuration
