@@ -1,7 +1,7 @@
 import random
 from datetime import timedelta
 
-from indicate_data_exchange_client import DefaultApi, ApiClient, Configuration, AggregationPeriodKind, \
+from indicate_data_exchange_api_client import DefaultApi, ApiClient, Configuration, AggregationPeriodKind, \
     AggregatedQualityIndicatorResult
 
 

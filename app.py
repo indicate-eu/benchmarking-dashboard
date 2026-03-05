@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, date
 from typing import Tuple, cast
 
-from indicate_data_exchange_client import AggregationPeriodKind
+from indicate_data_exchange_api_client import AggregationPeriodKind
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.routing import Route, Mount

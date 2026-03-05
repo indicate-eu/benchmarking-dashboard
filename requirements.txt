@@ -3,3 +3,4 @@ load-dotenv
 starlette
 uvicorn
 jinja2
+indicate_data_exchange_api_client
