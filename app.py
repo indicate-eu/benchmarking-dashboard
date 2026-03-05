@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, date
 from typing import Tuple, cast
 
@@ -11,7 +12,8 @@ from starlette.templating import Jinja2Templates
 from configuration import load_configuration
 from providers import OpenAPIDataProvider, RandomDataProvider
 
-# Configuration
+
+logger = logging.getLogger("uvicorn.error")
 
 
 DATA_PROVIDER = None
@@ -93,7 +95,15 @@ configuration = load_configuration()
 if configuration.data_provider == 'dummy':
     DATA_PROVIDER = RandomDataProvider(num_hospitals=8, num_indicators=8)
 elif configuration.data_provider == 'data-exchange-api':
-    DATA_PROVIDER = OpenAPIDataProvider(configuration.data_exchange_endpoint, configuration.provider_id)
+    logger.info("Using backend '%s' with endpoint '%s'",
+                configuration.data_provider,
+                configuration.data_exchange_endpoint)
+    if configuration.provider_id is None:
+        logger.info("Provider id not set; running in \"hub mode\"")
+    else:
+        logger.info("Provider id '%s'", configuration.provider_id)
+    DATA_PROVIDER = OpenAPIDataProvider(configuration.data_exchange_endpoint,
+                                        configuration.provider_id)
 
 
 app = Starlette(debug=configuration.debug_mode, routes=[
