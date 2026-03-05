@@ -112,10 +112,11 @@ class RandomDataProvider(DataProviderBase):
 
 
 class OpenAPIDataProvider(DataProviderBase):
-    def __init__(self, base_url, provider_id):
+    def __init__(self, base_url, provider_id, provider_name):
         self.base_url = base_url
         self.api = DefaultApi(ApiClient(configuration=Configuration(host=base_url)))
         self.provider_id = provider_id
+        self.provider_name = provider_name
 
     def _get_indicators_info(self):
         return self.api.indicator_info_get()
@@ -181,7 +182,7 @@ class OpenAPIDataProvider(DataProviderBase):
                 for cell in history
             ]
         def format_indicator_result(indicator_result):
-            own_values = indicator_result['providers']['d6b26000-1179-11f1-a524-3afa61a16d28']
+            own_values = indicator_result['providers'].get(self.provider_id, [])
             history = indicator_result['history']
             result = {
                 'id':            indicator_result['id'],
@@ -235,7 +236,7 @@ class OpenAPIDataProvider(DataProviderBase):
             return {
                 'is_self':      is_self,
                 'rank':         0,
-                'label':        '<Standort>' if is_self else '*' * 6,
+                'label':        self.provider_name if is_self else '*' * 6,
                 'num_patients': sum(provider_result['observation_counts']) / len(provider_result['observation_counts']),
                 'avg':          sum(provider_result['values']) / len(provider_result['values']),
                 'history':      provider_result['history'],

@@ -32,6 +32,11 @@ class Configuration(BaseModel):
         pattern=re.compile('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{8}'),
         description='TODO')
 
+    provider_name: Optional[str] = Field(
+        default=None,
+        description="""Name of the data provider for display in the dashboard.
+Can be chosen freely and does not impact functional aspects.""")
+
 
 def load_configuration(config_file: str = ".env") -> Configuration:
     """

@@ -101,9 +101,12 @@ elif configuration.data_provider == 'data-exchange-api':
     if configuration.provider_id is None:
         logger.info("Provider id not set; running in \"hub mode\"")
     else:
-        logger.info("Provider id '%s'", configuration.provider_id)
+        logger.info("Provider id '%s', name '%s'",
+                    configuration.provider_id,
+                    configuration.provider_name)
     DATA_PROVIDER = OpenAPIDataProvider(configuration.data_exchange_endpoint,
-                                        configuration.provider_id)
+                                        configuration.provider_id,
+                                        configuration.provider_name)
 
 
 app = Starlette(debug=configuration.debug_mode, routes=[
