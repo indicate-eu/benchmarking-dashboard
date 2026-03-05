@@ -1,0 +1,33 @@
+name: publish-container-image
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build the Docker image
+        run: docker build -t ghcr.io/${{ env.IMAGE_NAME }}:latest -f Containerfile .
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push the Docker image
+        run: docker push ghcr.io/${{ env.IMAGE_NAME }}:latest
