@@ -8,9 +8,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update                  \
     && DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes \
          git
 
-RUN git clone https://github.com/umg-minai/indicate-data-exchange-api-client
+RUN git clone https://github.com/indicate-eu/benchmarking-data-exchange-api-client
 
-WORKDIR indicate-data-exchange-api-client
+WORKDIR benchmarking-data-exchange-api-client
 
 RUN python3 -m venv .venv
 
